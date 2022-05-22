@@ -1,0 +1,212 @@
+import * as React from "react";
+import { Link } from "react-router-dom";
+const defaultimage: any = require("../images/default-image.png");
+const usericon: any = require("../images/user-icon.png");
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faShare } from "@fortawesome/free-solid-svg-icons";
+import * as moment from 'moment';
+import { sp } from '@pnp/sp/presets/all';
+import DashboardNav from "../DashboardNav";
+import Header from "../header";
+import Carousel from 'react-bootstrap/Carousel';
+export default class SubCorporateInnerPage extends React.Component<any, any> {
+  constructor(props) {
+    super(props);
+    this.state = {
+      itemsColl: [],
+      tempColl: [],
+      FileName: '',
+      FileURL: '',
+      Title: '',
+      Description: '',
+      PublishDate: '',
+      CreatedBy: '',
+      userGroupColl: [],
+      CarousalColl:[]
+
+    }
+  }
+
+
+  componentDidMount() {
+    debugger;
+    this.GetLeadershipAnnouncement('News Announcements').then((data) => {
+      debugger;
+      console.log(data);
+      console.log(this.state.itemColl);
+      this.getCarouselItem().then(async(item)=>{
+        //alert(item.length)
+        console.log(item)
+        this.setState({CarousalColl:item})
+      })
+    });
+  }
+
+  getCarouselItem(){
+    return new Promise<any>((resolve,reject)=>{
+    debugger;
+    let array=[]
+    sp.web.lists.getByTitle('CarouselItems').items.filter(`MasterID eq '${this.props.location.pathname.split('/')[2]}'`).select('Id','FileRef','File','Title','MasterID')
+    .expand('File').get().then(file=>{
+      debugger;
+      console.log(file);
+      file.map((item)=>{ 
+          debugger;      
+        console.log(item.FileRef);
+        if(item.File != "" && item.File != null && item.File != undefined){
+        array.push({
+            FileName:item.File == "" || item.File == null || item.File == undefined?"":item.File.Name,
+            FileURL:item.FileRef,
+            ItemID:item.ID,
+            Title:item.Title
+        }); 
+        }      
+      });
+      resolve(array)
+    },(err)=>{reject(err)})
+  })
+}
+
+  public GetLeadershipAnnouncement(ListName) {
+    debugger;
+    let titlesnew: string = '';
+    var array = [...this.state.itemsColl];
+    return new Promise<any[]>((resolve, reject) => {
+      sp.web.lists.getByTitle(ListName).items.getById(parseInt(this.props.location.pathname.split('/')[2])).select('ID,FileRef,File,Title,NewsDescription,Priority,Published_Date,ApprovalStatus,Archived,Author/Title').expand('File,Author').get().then(item => {
+        debugger;
+
+        if (item.Title != null && item.Title.length > 100) {
+          titlesnew = item.Title.substring(0, 100) + "...";
+        }
+        else {
+          titlesnew = item.Title;
+        }
+        array.push({
+          FileName: item.File.Name,
+          FileURL: item.FileRef,
+          ItemID: item.ID,
+          Title: titlesnew,
+          //NewsDescription: item.NewsDescription,
+          ApprovalStatus: item.ApprovalStatus,
+          PublishDate: item.Published_Date
+        });
+
+        this.setState({
+          itemsColl: array,
+          FileName: item.File.Name,
+          FileURL: item.FileRef,
+          Title: titlesnew,
+          PublishDate: item.Published_Date,
+          CreatedBy: item.Author.Title,
+          //NewsDescription: item.NewsDescription
+        }); 
+      }).then(() =>
+        resolve(this.state.itemsColl), () => reject('Error Occured')
+      )
+    });
+
+  }
+  public render(): React.ReactElement {
+    console.log("BLOG pages...!", this.props);
+    // alert(this.props.webURL);
+     //alert(this.props.context);
+    return (
+      <div className="bg-gray">
+        <Header handleSearch="" webURL={this.props.webURL} context={this.props.context}></Header>
+        <DashboardNav/> 
+        {this.state.itemsColl && this.state.itemsColl.length > 0 ?
+          <div className="container">
+
+            <div className="BreadCrome mt-4 subinnerpageAnnouncement">
+              <span> 
+                <a href="#" className="homeLink">
+                  Home
+                </a>
+              </span>
+              {/* <span className="backtofirstLevelPage" style={{display:'none'}}>&gt;</span> */}
+              <span className="subinnerpagetitle">
+                &gt;{" "}
+                <Link to="/CorporateInnerPage" style={{ color: "black" }}>
+                  What's new @ ICICI Bank
+                </Link>
+              </span>
+              <span>&gt; {this.state.Title}</span>
+            </div>
+            <div className=" thirdLevelAnnouncementpage mt-3">
+              <div className="flex-column subCardHeading">
+                <h5 style={{ fontWeight: "bold" }}>
+                  {this.state.Title}
+                </h5>
+                <div className="d-flex user-row">
+                  <div className="mr-3 d-inline-block align-self-center">
+                    <img src={usericon} alt="user" />
+                  </div>
+                  <div className="d-inline-block user-text subinnerpage">
+                    <span className="small font-weight-bold">Submitted by: {this.state.CreatedBy}</span>
+                    <p className="small"> {moment(this.state.PublishDate).format('DD MMMM YYYY')}</p>
+                  </div>
+                  <div className="share">
+                    <a href="#">
+                      <FontAwesomeIcon icon={faShare} /> Share
+                    </a>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div className=" mt-2 thirdLevelAnnouncementpage">
+              <img className="subImg" src={this.state.FileURL} alt="Card image cap" />
+            </div>
+            <div className=" thirdLevelAnnouncementpage justify-content-center ">
+              <div className="flex-column subCardDetails">
+                <p className="mt-3">
+                  {this.state.Title}
+                </p>
+                {/* <p className="mt-3">
+                  {this.state.NewsDescription}
+                </p> */}
+
+              {/* Actual Code Satrt */}
+                <div className="container-fluid">
+                  <div className="w-50">
+                  <Carousel className="w-50">
+                    {this.state.CarousalColl.map((item)=>{
+                      return(
+                        <Carousel.Item>
+                          <div className="card">
+                            <img src={`${item.FileURL}`} className="d-block w-100 h-75" alt="" />
+                            <h4 className="mt-3">{item.Title.split('--')[1]}</h4>
+                            {/* <p className="text-center mb-2">This is a sample text.</p> */}
+                          </div>
+                        </Carousel.Item>
+                      )
+                    })}
+                     
+                      {/* <Carousel.Item>
+                        <div className="card">
+                          <img src="/sites/UniverseUAT/NewsAnnouncements/CSK Front-01.jpg" className="d-block w-100 h-75" alt="" />
+                          <h4 className="mt-3">Title 2</h4>
+                          <p className="text-center mb-2">This is a sample text.</p>
+                        </div>
+                      </Carousel.Item>
+                      <Carousel.Item>
+                      <div className="card">
+                          <img src="/sites/UniverseUAT/NewsAnnouncements/ICICI - Emirates-77.png" className="d-block w-100 h-75" alt="" />
+                          <h4 className="mt-3">Title 3</h4>
+                          <p className="text-center mb-2">This is a sample text.</p>
+                        </div>
+                      </Carousel.Item> */}
+                  </Carousel>
+                  </div>
+                  </div>
+                {/* Code End */}
+
+
+              </div>
+            </div>
+          </div> :
+          <h6>No Announcement Exist!</h6>
+        }
+      </div>
+    );
+  }
+}
